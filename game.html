@@ -466,6 +466,100 @@
     margin: 0 auto;
     width: fit-content;
 }
+
+/* =========================================================================
+   TRAFFIC LIGHT GAME STYLES
+   ========================================================================= */
+
+#tl-game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#tl-display-container {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.tl-countdown {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #333;
+    margin: 10px 0;
+    min-height: 2.2rem;
+}
+
+#traffic-light-housing {
+    width: 120px;
+    height: 320px;
+    background-color: #1a1a1a;
+    border: 8px solid #333;
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+    padding: 20px 0;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 10px 20px rgba(0,0,0,0.4);
+    cursor: pointer;
+    transition: transform 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#traffic-light-housing:active {
+    transform: scale(0.98);
+}
+
+.tl-light {
+    width: 75px;
+    height: 75px;
+    border-radius: 50%;
+    background-color: #111;
+    box-shadow: inset 0 5px 10px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.1);
+    transition: background-color 0.2s, box-shadow 0.2s;
+    position: relative;
+}
+
+/* Light covers/hoods to look realistic */
+.tl-light::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.05);
+    pointer-events: none;
+}
+
+/* Active light colors with realistic glow */
+.tl-light.red.active {
+    background-color: #ff3b30;
+    box-shadow: 0 0 25px #ff3b30, inset 0 2px 5px rgba(255,255,255,0.5);
+}
+
+.tl-light.yellow.active {
+    background-color: #ffcc00;
+    box-shadow: 0 0 25px #ffcc00, inset 0 2px 5px rgba(255,255,255,0.5);
+}
+
+.tl-light.green.active {
+    background-color: #4cd964;
+    box-shadow: 0 0 25px #4cd964, inset 0 2px 5px rgba(255,255,255,0.5);
+}
+
+/* Modal styles support for select and input width adjustment */
+.setting-row select, .setting-row input {
+    width: 80px;
+    padding: 5px;
+    font-size: 1em;
+    box-sizing: border-box;
+}
 </style>
 </head>
 <body>
@@ -476,6 +570,7 @@
             <option value="addition">加法</option>
             <option value="subtraction">減法</option>
             <option value="short_answer">文字題</option>
+            <option value="traffic_light">交通燈</option>
         </select>
         <div>
             <button id="add-settings-btn" class="btn btn-success" style="display: none;">⚙️</button>
@@ -486,13 +581,24 @@
     <div id="add-settings-modal" class="modal" style="display: none;">
         <div class="modal-content">
             <h2 id="settings-title">設定</h2>
-            <div class="setting-row">
+            <div class="setting-row math-setting">
                 <label id="label-m-digits" for="m-digits-input">加數 1 位數 (m):</label>
                 <input type="number" id="m-digits-input" min="1" max="5" value="3">
             </div>
-            <div class="setting-row">
+            <div class="setting-row math-setting">
                 <label id="label-n-digits" for="n-digits-input">加數 2 位數 (n):</label>
                 <input type="number" id="n-digits-input" min="1" max="5" value="3">
+            </div>
+            <div class="setting-row tl-setting" style="display: none;">
+                <label id="label-tl-mode" for="tl-mode-input">模式:</label>
+                <select id="tl-mode-input" class="btn btn-success">
+                    <option value="auto">自動</option>
+                    <option value="manual">手動</option>
+                </select>
+            </div>
+            <div class="setting-row tl-setting" style="display: none;">
+                <label id="label-tl-duration" for="tl-duration-input">倒數時間 (秒):</label>
+                <input type="number" id="tl-duration-input" min="1" max="999" value="15">
             </div>
             <div class="modal-buttons">
                 <button id="settings-save-btn" class="btn btn-success">儲存</button>
@@ -582,6 +688,17 @@
         <p id="sa-feedback" class="feedback"></p>
     </div>
 
+    <div id="tl-game-container" class="game-view" style="display: none;">
+        <div id="tl-display-container">
+            <p id="tl-countdown-display" class="tl-countdown"></p>
+        </div>
+        <div id="traffic-light-housing">
+            <div id="tl-red" class="tl-light red"></div>
+            <div id="tl-yellow" class="tl-light yellow"></div>
+            <div id="tl-green" class="tl-light green"></div>
+        </div>
+    </div>
+
     <script>const questionsData = {"en":{"general_knowledge":[{"question":"What animal says 'woof'?","choices":["Cat","Dog","Cow","Bird"],"answer":"Dog"},{"question":"What color is a banana?","choices":["Red","Blue","Yellow","Green"],"answer":"Yellow"},{"question":"What do you wear on your feet?","choices":["Hat","Gloves","Socks","Scarf"],"answer":"Socks"},{"question":"What do you use to brush your teeth?","choices":["Soap","Shampoo","Toothbrush","Towel"],"answer":"Toothbrush"},{"question":"What sound does a cow make?","choices":["Moo","Oink","Baa","Quack"],"answer":"Moo"},{"question":"Where do fish live?","choices":["In trees","In the sky","In water","Underground"],"answer":"In water"},{"question":"What do you do when you're sleepy?","choices":["Run","Jump","Sleep","Eat"],"answer":"Sleep"},{"question":"What color is the sun?","choices":["Blue","Green","Yellow","Purple"],"answer":"Yellow"},{"question":"What has wings and can fly?","choices":["Fish","Dog","Bird","Snake"],"answer":"Bird"},{"question":"What do you eat with a spoon?","choices":["Pizza","Soup","Sandwich","Apple"],"answer":"Soup"},{"question":"What do you see in the sky at night?","choices":["Sun","Rainbow","Moon and stars","Clouds"],"answer":"Moon and stars"},{"question":"Which animal has a long trunk?","choices":["Monkey","Lion","Elephant","Zebra"],"answer":"Elephant"},{"question":"What do you drink when you're thirsty?","choices":["Cookies","Water","Toys","Books"],"answer":"Water"},{"question":"What color are strawberries?","choices":["Blue","Yellow","Red","Orange"],"answer":"Red"},{"question":"What grows on trees?","choices":["Fish","Cars","Apples","Balls"],"answer":"Apples"},{"question":"What do you wear when it's cold?","choices":["Shorts","T-shirt","Jacket","Sandals"],"answer":"Jacket"},{"question":"Which animal says 'oink'?","choices":["Pig","Sheep","Duck","Horse"],"answer":"Pig"},{"question":"What do you play with at the park?","choices":["Bed","Stove","Swing","Sofa"],"answer":"Swing"},{"question":"What color is grass?","choices":["Red","Green","Blue","Purple"],"answer":"Green"},{"question":"What do you read?","choices":["Chair","Table","Book","Lamp"],"answer":"Book"},{"question":"Which animal is known for being 'man's best friend'?","choices":["Cat","Dog","Hamster","Goldfish"],"answer":"Dog"},{"question":"What do bees make?","choices":["Honey","Milk","Bread","Cheese"],"answer":"Honey"},{"question":"How many wheels does a bicycle have?","choices":["One","Two","Three","Four"],"answer":"Two"},{"question":"What do you do at a red traffic light?","choices":["Go","Stop","Slow down","Speed up"],"answer":"Stop"},{"question":"Which shape has three sides?","choices":["Circle","Square","Triangle","Rectangle"],"answer":"Triangle"},{"question":"What do you put on a birthday cake?","choices":["Ketchup","Candles","Mustard","Pickles"],"answer":"Candles"},{"question":"What is the opposite of 'hot'?","choices":["Warm","Cold","Spicy","Sunny"],"answer":"Cold"},{"question":"What animal has stripes?","choices":["Lion","Zebra","Monkey","Hippo"],"answer":"Zebra"},{"question":"What do you use to unlock a door?","choices":["A key","A banana","A shoe","A hat"],"answer":"A key"},{"question":"What is a baby dog called?","choices":["Kitten","Puppy","Cub","Fawn"],"answer":"Puppy"},{"question":"What color are grapes?","choices":["Orange","Purple","Pink","Brown"],"answer":"Purple"},{"question":"What do you use an umbrella for?","choices":["For sun","For rain","For wind","For snow"],"answer":"For rain"},{"question":"Which animal has a very long neck?","choices":["Penguin","Giraffe","Kangaroo","Bear"],"answer":"Giraffe"},{"question":"What do you do with a ball?","choices":["Eat it","Read it","Throw it","Wear it"],"answer":"Throw it"},{"question":"What is the opposite of 'big'?","choices":["Large","Small","Tall","Wide"],"answer":"Small"},{"question":"What do you see after it rains?","choices":["A rainbow","A shadow","A storm","A tunnel"],"answer":"A rainbow"},{"question":"What do you cut paper with?","choices":["A fork","Scissors","A plate","A cup"],"answer":"Scissors"},{"question":"What does a frog say?","choices":["Hiss","Ribbit","Roar","Chirp"],"answer":"Ribbit"},{"question":"What is the number after 2?","choices":["1","3","4","5"],"answer":"3"},{"question":"What do you sit on?","choices":["A window","A ceiling","A chair","A wall"],"answer":"A chair"},{"question":"Which animal is the king of the jungle?","choices":["Tiger","Lion","Giraffe","Bear"],"answer":"Lion"},{"question":"What color are carrots?","choices":["Green","Orange","Purple","White"],"answer":"Orange"},{"question":"What do you do with your eyes?","choices":["Hear","Smell","See","Taste"],"answer":"See"},{"question":"What is frozen water called?","choices":["Steam","Ice","Juice","Milk"],"answer":"Ice"},{"question":"Which of these is a fruit?","choices":["Carrot","Broccoli","Apple","Potato"],"answer":"Apple"},{"question":"What do you write with?","choices":["A spoon","A fork","A pencil","A knife"],"answer":"A pencil"},{"question":"What do you use to call someone?","choices":["A television","A telephone","A refrigerator","A bed"],"answer":"A telephone"},{"question":"What is the opposite of 'happy'?","choices":["Excited","Sad","Angry","Tired"],"answer":"Sad"},{"question":"What animal swims in the ocean and has fins?","choices":["A bird","A fish","A butterfly","A squirrel"],"answer":"A fish"},{"question":"What do you wear on your head?","choices":["A shirt","A hat","Pants","Socks"],"answer":"A hat"}],"measure_words":[{"question":"A ( ) of bread.","choices":["piece","loaf","slice","bar"],"answer":"loaf"},{"question":"A ( ) of water.","choices":["glass","cup","bottle","carton"],"answer":"glass"}]},"zh":{"general_knowledge":[{"question":"哪種動物會'汪汪'叫？","choices":["貓","狗","牛","鳥"],"answer":"狗"},{"question":"香蕉是什麼顏色的？","choices":["紅色","藍色","黃色","綠色"],"answer":"黃色"},{"question":"你腳上穿什麼？","choices":["帽子","手套","襪子","頸巾"],"answer":"襪子"},{"question":"你用什麼來刷牙？","choices":["番梘","洗頭水","牙刷","毛巾"],"answer":"牙刷"},{"question":"牛怎麼叫？","choices":["哞哞","咯咯","咩咩","嘎嘎"],"answer":"哞哞"},{"question":"魚住在哪裡？","choices":["樹上","天上","水裡","地下"],"answer":"水裡"},{"question":"當你睏了，你會做什麼？","choices":["跑步","跳","睡覺","吃飯"],"answer":"睡覺"},{"question":"太陽是什麼顏色的？","choices":["藍色","綠色","黃色","紫色"],"answer":"黃色"},{"question":"什麼東西有翅膀還會飛？","choices":["魚","狗","鳥","蛇"],"answer":"鳥"},{"question":"你用湯匙吃什麼？","choices":["薄餅","湯","三文治","蘋果"],"answer":"湯"},{"question":"晚上你在天上看到什麼？","choices":["太陽","彩虹","月亮和星星","雲"],"answer":"月亮和星星"},{"question":"哪種動物有長長的鼻子？","choices":["猴子","獅子","大象","斑馬"],"answer":"大象"},{"question":"你口渴的時候喝什麼？","choices":["餅乾","水","玩具","書"],"answer":"水"},{"question":"士多啤梨是什麼顏色的？","choices":["藍色","黃色","紅色","橙色"],"answer":"紅色"},{"question":"什麼東西在樹上長？","choices":["魚","車","蘋果","球"],"answer":"蘋果"},{"question":"天氣冷的時候你穿什麼？","choices":["短褲","T恤","外套","涼鞋"],"answer":"外套"},{"question":"哪種動物會'咯咯'叫？","choices":["豬","羊","鴨","馬"],"answer":"豬"},{"question":"你在公園玩什麼？","choices":["床","火爐","鞦韆","沙發"],"answer":"鞦韆"},{"question":"草是什麼顏色的？","choices":["紅色","綠色","藍色","紫色"],"answer":"綠色"},{"question":"你讀什麼？","choices":["椅子","桌子","書","燈"],"answer":"書"},{"question":"哪種動物被稱為'人類最好的朋友'？","choices":["貓","狗","倉鼠","金魚"],"answer":"狗"},{"question":"蜜蜂製造什麼？","choices":["蜂蜜","牛奶","麵包","芝士"],"answer":"蜂蜜"},{"question":"單車有幾個輪子？","choices":["一個","兩個","三個","四個"],"answer":"兩個"},{"question":"遇到紅燈你會怎麼做？","choices":["前進","停","減速","加速"],"answer":"停"},{"question":"哪個形狀有三條邊？","choices":["圓形","正方形","三角形","長方形"],"answer":"三角形"},{"question":"生日蛋糕上會放什麼？","choices":["茄汁","蠟燭","芥末","酸瓜"],"answer":"蠟燭"},{"question":"'熱'的相反是什麼？","choices":["溫暖","冷","辣","晴天"],"answer":"冷"},{"question":"哪種動物身上有條紋？","choices":["獅子","斑馬","猴子","河馬"],"answer":"斑馬"},{"question":"你用什麼來開門？","choices":["鑰匙","香蕉","鞋","帽子"],"answer":"鑰匙"},{"question":"小狗的寶寶叫什麼？","choices":["小貓","小狗","幼獸","幼鹿"],"answer":"小狗"},{"question":"葡萄是什麼顏色的？","choices":["橙色","紫色","粉紅色","啡色"],"answer":"紫色"},{"question":"你什麼時候會用雨傘？","choices":["太陽大的時候","下雨的時候","颳風的時候","下雪的時候"],"answer":"下雨的時候"},{"question":"哪種動物的脖子很長？","choices":["企鵝","長頸鹿","袋鼠","熊"],"answer":"長頸鹿"},{"question":"你會怎樣玩球？","choices":["吃掉它","讀它","扔它","穿上它"],"answer":"扔它"},{"question":"'大'的相反是什麼？","choices":["巨型","小","高","闊"],"answer":"小"},{"question":"下雨後你會看到什麼？","choices":["彩虹","影子","暴風雨","隧道"],"answer":"彩虹"},{"question":"你用什麼來剪紙？","choices":["叉","剪刀","碟子","杯子"],"answer":"剪刀"},{"question":"青蛙怎麼叫？","choices":["嘶嘶","呱呱","吼","唧唧"],"answer":"呱呱"},{"question":"2之後的數字是什麼？","choices":["1","3","4","5"],"answer":"3"},{"question":"你坐在哪裡？","choices":["窗戶上","天花板上","椅子上","牆上"],"answer":"椅子上"},{"question":"哪種動物是叢林之王？","choices":["老虎","獅子","長頸鹿","熊"],"answer":"獅子"},{"question":"紅蘿蔔是什麼顏色的？","choices":["綠色","橙色","紫色","白色"],"answer":"橙色"},{"question":"你用眼睛做什麼？","choices":["聽","聞","看","嚐"],"answer":"看"},{"question":"結冰的水叫什麼？","choices":["蒸氣","冰","果汁","牛奶"],"answer":"冰"},{"question":"以下哪種是水果？","choices":["紅蘿蔔","西蘭花","蘋果","薯仔"],"answer":"蘋果"},{"question":"你用什麼寫字？","choices":["湯匙","叉","鉛筆","刀"],"answer":"鉛筆"},{"question":"你用什麼來打電話？","choices":["電視","電話","雪櫃","床"],"answer":"電話"},{"question":"'開心'的相反是什麼？","choices":["興奮","傷心","生氣","疲倦"],"answer":"傷心"},{"question":"哪種動物在海裡游水，還有魚鰭？","choices":["鳥","魚","蝴蝶","松鼠"],"answer":"魚"},{"question":"你頭上戴什麼？","choices":["襯衫","帽子","褲子","襪子"],"answer":"帽子"}],"measure_words":[{"question":"一（ ）椅子","choices":["張","本","棵","隻"],"answer":"張"},{"question":"一（ ）書","choices":["本","張","棵","隻"],"answer":"本"},{"question":"一（ ）樹","choices":["棵","本","張","隻"],"answer":"棵"},{"question":"一（ ）貓","choices":["隻","張","件","台"],"answer":"隻"},{"question":"一（ ）花","choices":["朵","本","棵","隻"],"answer":"朵"},{"question":"一（ ）筆","choices":["枝","本","棵","張"],"answer":"枝"},{"question":"一（ ）狗","choices":["隻","張","本","匹"],"answer":"隻"},{"question":"一（ ）魚","choices":["條","本","頭","匹"],"answer":"條"},{"question":"一（ ）牛","choices":["頭","扇","條","匹"],"answer":"頭"},{"question":"一（ ）馬","choices":["匹","張","條","頭"],"answer":"匹"},{"question":"一（ ）鳥","choices":["隻","條","頂","頭"],"answer":"隻"},{"question":"一（ ）蜜蜂","choices":["隻","頂","條","座"],"answer":"隻"},{"question":"一（ ）雞","choices":["隻","頂","條","匹"],"answer":"隻"},{"question":"一（ ）鴨","choices":["隻","頂","面","位"],"answer":"隻"},{"question":"一（ ）羊","choices":["隻","頂","把","位"],"answer":"隻"},{"question":"一（ ）豬","choices":["頭","條","位","匹"],"answer":"頭"},{"question":"一（ ）人","choices":["個","枝","朵","張"],"answer":"個"},{"question":"一（ ）老師","choices":["位","頂","本","條"],"answer":"位"},{"question":"一（ ）學生","choices":["個","頂","件","條"],"answer":"個"},{"question":"一（ ）醫生","choices":["位","頂","本","條"],"answer":"位"},{"question":"一（ ）警察","choices":["位","頂","本","條"],"answer":"位"},{"question":"一（ ）大廈","choices":["座","枝","顆","朵"],"answer":"座"},{"question":"一（ ）橋","choices":["座","件","本","棵"],"answer":"座"},{"question":"一（ ）山","choices":["座","枚","道","輪"],"answer":"座"},{"question":"一（ ）河","choices":["條","座","本","輪"],"answer":"條"},{"question":"一（ ）路","choices":["條","座","枝","輪"],"answer":"條"},{"question":"一（ ）車","choices":["輛","本","隻","架"],"answer":"輛"},{"question":"一（ ）飛機","choices":["架","輛","條","部"],"answer":"架"},{"question":"一（ ）電腦","choices":["台","輛","隻","架"],"answer":"台"},{"question":"一（ ）電視","choices":["台","輛","本","架"],"answer":"台"},{"question":"一（ ）手機","choices":["部","枝","棵","架"],"answer":"部"},{"question":"一（ ）蘋果","choices":["個","根","扇","枚"],"answer":"個"},{"question":"一（ ）西瓜","choices":["個","根","枝","枚"],"answer":"個"},{"question":"一（ ）葡萄","choices":["串","張","頂","本"],"answer":"串"},{"question":"一（ ）香蕉","choices":["根","個","張","塊"],"answer":"根"},{"question":"一（ ）草莓","choices":["顆","頂","條","枚"],"answer":"顆"},{"question":"一（ ）鞋子","choices":["雙","件","頂","面"],"answer":"雙"},{"question":"一（ ）襪子","choices":["雙","件","頂","本"],"answer":"雙"},{"question":"一（ ）手套","choices":["雙","件","頂","座"],"answer":"雙"},{"question":"一（ ）筷子","choices":["雙","件","頂","枝"],"answer":"雙"},{"question":"一（ ）眼睛","choices":["雙","件","頂","張"],"answer":"雙"},{"question":"一（ ）門","choices":["扇","張","本","棵"],"answer":"扇"},{"question":"一（ ）窗","choices":["扇","張","本","棵"],"answer":"扇"},{"question":"一（ ）牆","choices":["面","扇","張","棵"],"answer":"面"},{"question":"一（ ）畫","choices":["幅","頂","本","篇"],"answer":"幅"},{"question":"一（ ）照片","choices":["張","頂","本","篇"],"answer":"張"},{"question":"一（ ）詩","choices":["首","張","本","棵"],"answer":"首"},{"question":"一（ ）歌","choices":["首","張","本","棵"],"answer":"首"},{"question":"一（ ）文章","choices":["篇","首","頂","本"],"answer":"篇"},{"question":"一（ ）電影","choices":["部","棵","塊","張"],"answer":"部"},{"question":"一（ ）雨傘","choices":["把","頂","個","張"],"answer":"把"},{"question":"一（ ）信","choices":["封","張","本","個"],"answer":"封"},{"question":"一（ ）眼鏡","choices":["副","隻","個","頂"],"answer":"副"},{"question":"一（ ）帽子","choices":["頂","個","隻","件"],"answer":"頂"},{"question":"一（ ）房間","choices":["間","座","枚","個"],"answer":"間"},{"question":"一（ ）飯","choices":["碗","碟","盤","杯"],"answer":"碗"},{"question":"一（ ）水","choices":["杯","碗","碟","盤"],"answer":"杯"},{"question":"一（ ）蛋糕","choices":["塊","副","張","匹"],"answer":"塊"},{"question":"一（ ）飯桌","choices":["張","台","座","個"],"answer":"張"},{"question":"一（ ）衣服","choices":["件","條","頂","雙"],"answer":"件"},{"question":"一（ ）褲子","choices":["條","本","套","雙"],"answer":"條"},{"question":"一（ ）床","choices":["張","座","間","個"],"answer":"張"},{"question":"一（ ）船","choices":["艘","架","輛","台"],"answer":"艘"},{"question":"一（ ）毛巾","choices":["條","件","枚","張"],"answer":"條"},{"question":"一（ ）牙刷","choices":["枝","根","面","把"],"answer":"枝"},{"question":"一（ ）家庭","choices":["個","把","枝","座"],"answer":"個"},{"question":"一（ ）公司","choices":["間","把","棵","隻"],"answer":"間"},{"question":"一（ ）星星","choices":["顆","張","塊","片"],"answer":"顆"},{"question":"一（ ）白雲","choices":["朵","枝","把","架"],"answer":"朵"},{"question":"一（ ）沙發","choices":["張","個","隻","座"],"answer":"張"},{"question":"一（ ）茶壺","choices":["把","個","枝","杯"],"answer":"把"},{"question":"一（ ）剪刀","choices":["把","張","枝","對"],"answer":"把"},{"question":"一（ ）米","choices":["粒","張","塊","條"],"answer":"粒"},{"question":"一（ ）鹽","choices":["撮","張","枝","點"],"answer":"撮"},{"question":"一（ ）糖","choices":["顆","張","枝","架"],"answer":"顆"},{"question":"一（ ）花生","choices":["顆","隻","條","本"],"answer":"顆"},{"question":"一（ ）西藥","choices":["粒","張","棵","座"],"answer":"粒"},{"question":"一（ ）藥丸","choices":["粒","本","枝","座"],"answer":"粒"},{"question":"一（ ）鈕扣","choices":["粒","張","枝","本"],"answer":"粒"},{"question":"一（ ）子彈","choices":["發","張","枝","本"],"answer":"發"},{"question":"一（ ）種子","choices":["粒","張","隻","本"],"answer":"粒"},{"question":"一（ ）珍珠","choices":["顆","張","本","對"],"answer":"顆"},{"question":"一（ ）鑽石","choices":["顆","本","塊","對"],"answer":"顆"},{"question":"一（ ）心","choices":["顆","個","張","隻"],"answer":"顆"},{"question":"一（ ）淚珠","choices":["滴","張","本","棵"],"answer":"滴"},{"question":"一（ ）露珠","choices":["滴","張","本","棵"],"answer":"滴"},{"question":"一（ ）汗珠","choices":["滴","張","本","棵"],"answer":"滴"},{"question":"一（ ）牙齒","choices":["顆","隻","排","把"],"answer":"顆"},{"question":"一（ ）石頭","choices":["塊","枚","枝","座"],"answer":"塊"},{"question":"一（ ）肥皂","choices":["塊","件","條","個"],"answer":"塊"},{"question":"一（ ）冰塊","choices":["塊","本","隻","片"],"answer":"塊"},{"question":"一（ ）布","choices":["匹","幅","張","枝"],"answer":"匹"},{"question":"一（ ）手錶","choices":["隻","張","本","副"],"answer":"隻"},{"question":"一（ ）手鐲","choices":["隻","對","副","本"],"answer":"隻"},{"question":"一（ ）戒指","choices":["枚","張","顆","本"],"answer":"枚"},{"question":"一（ ）郵票","choices":["枚","張","個","幅"],"answer":"枚"},{"question":"一（ ）火箭","choices":["枚","枝","張","座"],"answer":"枚"},{"question":"一（ ）別針","choices":["枚","枝","根","個"],"answer":"枚"},{"question":"一（ ）蔥","choices":["根","本","棵","隻"],"answer":"根"},{"question":"一（ ）火腿","choices":["根","本","件","片"],"answer":"根"},{"question":"一（ ）油條","choices":["條","張","塊","個"],"answer":"條"},{"question":"一（ ）繩子","choices":["根","本","座","頂"],"answer":"根"},{"question":"一（ ）頭髮","choices":["根","本","撮","絲"],"answer":"根"},{"question":"一（ ）火柴","choices":["根","枝","盒","包"],"answer":"根"},{"question":"一（ ）蠟燭","choices":["根","枝","支","條"],"answer":"根"},{"question":"一（ ）木頭","choices":["根","張","座","堆"],"answer":"根"},{"question":"一（ ）骨頭","choices":["根","張","塊","副"],"answer":"根"},{"question":"一（ ）電線","choices":["根","張","本","座"],"answer":"根"},{"question":"一（ ）竹竿","choices":["根","枝","棵","隻"],"answer":"根"},{"question":"一（ ）旗杆","choices":["根","枝","座","隻"],"answer":"根"},{"question":"一（ ）甘蔗","choices":["根","枝","張","朵"],"answer":"根"},{"question":"一（ ）褲腰帶","choices":["條","本","圍","圈"],"answer":"條"},{"question":"一（ ）小溪","choices":["條","座","本","隻"],"answer":"條"},{"question":"一（ ）圍巾","choices":["條","頂","座","塊"],"answer":"條"},{"question":"一（ ）領帶","choices":["條","頂","根","座"],"answer":"條"},{"question":"一（ ）香腸","choices":["條","張","頂","座"],"answer":"條"},{"question":"一（ ）吐司","choices":["片","張","本","棵"],"answer":"片"},{"question":"一（ ）香煙","choices":["支","本","張","條"],"answer":"支"},{"question":"一（ ）軍艦","choices":["艘","隻","架","座"],"answer":"艘"},{"question":"一（ ）潛艇","choices":["艘","隻","架","台"],"answer":"艘"},{"question":"一（ ）鋼琴","choices":["架","本","座","隻"],"answer":"架"},{"question":"一（ ）機器","choices":["台","本","座","隻"],"answer":"台"},{"question":"一（ ）相機","choices":["部","台","張","個"],"answer":"部"},{"question":"一（ ）樓梯","choices":["道","張","座","本"],"answer":"道"},{"question":"一（ ）閃電","choices":["道","本","棵","隻"],"answer":"道"},{"question":"一（ ）彩虹","choices":["道","本","隻","座"],"answer":"道"},{"question":"一（ ）傷口","choices":["道","張","個","處"],"answer":"道"},{"question":"一（ ）煙","choices":["縷","張","隻","本"],"answer":"縷"},{"question":"一（ ）炊煙","choices":["縷","張","座","道"],"answer":"縷"},{"question":"一（ ）清泉","choices":["股","張","本","棵"],"answer":"股"},{"question":"一（ ）氣流","choices":["股","本","座","隻"],"answer":"股"},{"question":"一（ ）濃煙","choices":["股","張","本","座"],"answer":"股"},{"question":"一（ ）歪風","choices":["股","張","道","本"],"answer":"股"},{"question":"一（ ）力量","choices":["股","張","本","棵"],"answer":"股"},{"question":"一（ ）熱情","choices":["股","張","本","棵"],"answer":"股"},{"question":"一（ ）心意","choices":["份","張","棵","隻"],"answer":"份"},{"question":"一（ ）禮物","choices":["份","張","本","棵"],"answer":"份"},{"question":"一（ ）午餐","choices":["頓","張","本","棵"],"answer":"頓"},{"question":"一（ ）報紙","choices":["份","張","棵","隻"],"answer":"份"},{"question":"一（ ）文件","choices":["份","張","棵","隻"],"answer":"份"},{"question":"一（ ）薪水","choices":["份","張","棵","隻"],"answer":"份"}]}};
 document.addEventListener('DOMContentLoaded', () => {
     // Global UI Elements
@@ -638,6 +755,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const saFeedback = document.getElementById('sa-feedback');
     const saSubmitBtn = document.getElementById('sa-submit-btn');
 
+    // Traffic Light UI Elements
+    const tlGameContainer = document.getElementById('tl-game-container');
+    const tlCountdownDisplay = document.getElementById('tl-countdown-display');
+    const tlRed = document.getElementById('tl-red');
+    const tlYellow = document.getElementById('tl-yellow');
+    const tlGreen = document.getElementById('tl-green');
+    const trafficLightHousing = document.getElementById('traffic-light-housing');
+    const tlModeInput = document.getElementById('tl-mode-input');
+    const tlDurationInput = document.getElementById('tl-duration-input');
+    const labelTlMode = document.getElementById('label-tl-mode');
+    const labelTlDuration = document.getElementById('label-tl-duration');
+
     // State Variables
     let currentLanguage = 'zh';
     let currentCategory = 'measure_words';
@@ -668,6 +797,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let saCurrentQuestionIndex = 0;
     let saCorrectAnswer = 0;
     let saIsIncorrect = false;
+
+    // Traffic Light State Variables
+    let tlIsAuto = true;
+    let tlDuration = 15;
+    let tlCurrentState = 0; // 0: Red, 1: Red + Yellow, 2: Green, 3: Yellow
+    let tlTimer = null;
+    let tlTransitionTimeout = null;
+    let tlRemainingSeconds = 15;
 
     const soSentences = [
         { scrambled: '我的/中文/名字/叫做/陳大文。', correct: '我的中文名字叫做陳大文。' },
@@ -842,7 +979,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'sentence_order': { zh: '句子排序', en: 'Sentence Order' },
         'addition': { zh: '加法', en: 'Addition' },
         'subtraction': { zh: '減法', en: 'Subtraction' },
-        'short_answer': { zh: '文字題', en: 'Short Answer' }
+        'short_answer': { zh: '文字題', en: 'Short Answer' },
+        'traffic_light': { zh: '交通燈', en: 'Traffic Light' }
     };
 
     function shuffleArray(array) {
@@ -863,6 +1001,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.title = lang === 'zh' ? '減法練習' : 'Subtraction Game';
         } else if (currentGameMode === 'short_answer') {
             document.title = lang === 'zh' ? '文字題練習' : 'Short Answer Game';
+        } else if (currentGameMode === 'traffic_light') {
+            document.title = lang === 'zh' ? '交通燈練習' : 'Traffic Light Mode';
         }
     }
 
@@ -884,18 +1024,32 @@ document.addEventListener('DOMContentLoaded', () => {
             urlParams.set('category', currentCategory);
             urlParams.delete('m');
             urlParams.delete('n');
+            urlParams.delete('tl_auto');
+            urlParams.delete('tl_duration');
         } else if (currentGameMode === 'addition') {
             urlParams.delete('category');
             urlParams.set('m', addMDigits);
             urlParams.set('n', addNDigits);
+            urlParams.delete('tl_auto');
+            urlParams.delete('tl_duration');
         } else if (currentGameMode === 'subtraction') {
             urlParams.delete('category');
             urlParams.set('m', subMDigits);
             urlParams.set('n', subNDigits);
+            urlParams.delete('tl_auto');
+            urlParams.delete('tl_duration');
+        } else if (currentGameMode === 'traffic_light') {
+            urlParams.delete('category');
+            urlParams.delete('m');
+            urlParams.delete('n');
+            urlParams.set('tl_auto', tlIsAuto ? '1' : '0');
+            urlParams.set('tl_duration', tlDuration);
         } else {
             urlParams.delete('category');
             urlParams.delete('m');
             urlParams.delete('n');
+            urlParams.delete('tl_auto');
+            urlParams.delete('tl_duration');
         }
 
         const newUrl = window.location.pathname + '?' + urlParams.toString();
@@ -1639,6 +1793,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentGameMode === 'subtraction') {
             labelMDigits.textContent = currentLanguage === 'zh' ? '被減數 (m):' : 'Minuend (m):';
             labelNDigits.textContent = currentLanguage === 'zh' ? '減數 (n):' : 'Subtrahend (n):';
+        } else if (currentGameMode === 'traffic_light') {
+            labelTlMode.textContent = currentLanguage === 'zh' ? '模式:' : 'Mode:';
+            labelTlDuration.textContent = currentLanguage === 'zh' ? '倒數時間 (秒):' : 'Countdown (seconds):';
+            tlModeInput.options[0].textContent = currentLanguage === 'zh' ? '自動' : 'Auto';
+            tlModeInput.options[1].textContent = currentLanguage === 'zh' ? '手動' : 'Manual';
         } else {
             labelMDigits.textContent = currentLanguage === 'zh' ? '加數 1 位數 (m):' : 'Top number digits (m):';
             labelNDigits.textContent = currentLanguage === 'zh' ? '加數 2 位數 (n):' : 'Bottom number digits (n):';
@@ -1646,12 +1805,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     addSettingsBtn.addEventListener('click', () => {
-        if (currentGameMode === 'subtraction') {
-            mDigitsInput.value = subMDigits;
-            nDigitsInput.value = subNDigits;
+        const mathSettings = addSettingsModal.querySelectorAll('.math-setting');
+        const tlSettings = addSettingsModal.querySelectorAll('.tl-setting');
+        if (currentGameMode === 'traffic_light') {
+            mathSettings.forEach(el => el.style.display = 'none');
+            tlSettings.forEach(el => el.style.display = 'flex');
+            tlModeInput.value = tlIsAuto ? 'auto' : 'manual';
+            tlDurationInput.value = tlDuration;
         } else {
-            mDigitsInput.value = addMDigits;
-            nDigitsInput.value = addNDigits;
+            mathSettings.forEach(el => el.style.display = 'flex');
+            tlSettings.forEach(el => el.style.display = 'none');
+            if (currentGameMode === 'subtraction') {
+                mDigitsInput.value = subMDigits;
+                nDigitsInput.value = subNDigits;
+            } else {
+                mDigitsInput.value = addMDigits;
+                nDigitsInput.value = addNDigits;
+            }
         }
         updateSettingsLabels();
         addSettingsModal.style.display = 'flex';
@@ -1662,23 +1832,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     settingsSaveBtn.addEventListener('click', () => {
-        let mVal = parseInt(mDigitsInput.value) || 3;
-        let nVal = parseInt(nDigitsInput.value) || 3;
-        
-        mVal = Math.max(1, Math.min(5, mVal));
-        nVal = Math.max(1, Math.min(5, nVal));
-        
-        mDigitsInput.value = mVal;
-        nDigitsInput.value = nVal;
-        
-        if (currentGameMode === 'subtraction') {
-            subMDigits = mVal;
-            subNDigits = nVal;
-            subLoadQuestion();
+        if (currentGameMode === 'traffic_light') {
+            tlIsAuto = tlModeInput.value === 'auto';
+            let dVal = parseInt(tlDurationInput.value) || 15;
+            dVal = Math.max(1, dVal);
+            tlDuration = dVal;
+            tlDurationInput.value = tlDuration;
+            tlReset();
         } else {
-            addMDigits = mVal;
-            addNDigits = nVal;
-            addLoadQuestion();
+            let mVal = parseInt(mDigitsInput.value) || 3;
+            let nVal = parseInt(nDigitsInput.value) || 3;
+            
+            mVal = Math.max(1, Math.min(5, mVal));
+            nVal = Math.max(1, Math.min(5, nVal));
+            
+            mDigitsInput.value = mVal;
+            nDigitsInput.value = nVal;
+            
+            if (currentGameMode === 'subtraction') {
+                subMDigits = mVal;
+                subNDigits = nVal;
+                subLoadQuestion();
+            } else {
+                addMDigits = mVal;
+                addNDigits = nVal;
+                addLoadQuestion();
+            }
         }
         addSettingsModal.style.display = 'none';
         updateUrlParams();
@@ -1803,9 +1982,8 @@ document.addEventListener('DOMContentLoaded', () => {
             subLoadQuestion();
         } else if (currentGameMode === 'short_answer') {
             saLoadQuestion();
-        } else {
-            // Note: Sentence order only has Chinese sentences right now, 
-            // but UI buttons can be translated.
+        } else if (currentGameMode === 'traffic_light') {
+            tlUpdateDisplay();
         }
         
         updateUrlParams();
@@ -1831,6 +2009,8 @@ document.addEventListener('DOMContentLoaded', () => {
             addGameContainer.style.display = 'none';
             subGameContainer.style.display = 'none';
             saGameContainer.style.display = 'none';
+            tlGameContainer.style.display = 'none';
+            tlCleanup();
             await loadMcQuestions(currentLanguage, currentCategory);
             renderMcQuestion();
         } else if (currentGameMode === 'sentence_order') {
@@ -1839,6 +2019,8 @@ document.addEventListener('DOMContentLoaded', () => {
             addGameContainer.style.display = 'none';
             subGameContainer.style.display = 'none';
             saGameContainer.style.display = 'none';
+            tlGameContainer.style.display = 'none';
+            tlCleanup();
             soLoadSentence();
         } else if (currentGameMode === 'addition') {
             addSettingsBtn.style.display = 'inline-block';
@@ -1847,6 +2029,8 @@ document.addEventListener('DOMContentLoaded', () => {
             addGameContainer.style.display = 'block';
             subGameContainer.style.display = 'none';
             saGameContainer.style.display = 'none';
+            tlGameContainer.style.display = 'none';
+            tlCleanup();
             addLoadQuestion();
         } else if (currentGameMode === 'subtraction') {
             addSettingsBtn.style.display = 'inline-block';
@@ -1855,6 +2039,8 @@ document.addEventListener('DOMContentLoaded', () => {
             addGameContainer.style.display = 'none';
             subGameContainer.style.display = 'block';
             saGameContainer.style.display = 'none';
+            tlGameContainer.style.display = 'none';
+            tlCleanup();
             subLoadQuestion();
         } else if (currentGameMode === 'short_answer') {
             mcGameContainer.style.display = 'none';
@@ -1862,11 +2048,167 @@ document.addEventListener('DOMContentLoaded', () => {
             addGameContainer.style.display = 'none';
             subGameContainer.style.display = 'none';
             saGameContainer.style.display = 'block';
+            tlGameContainer.style.display = 'none';
+            tlCleanup();
             saLoadQuestion();
+        } else if (currentGameMode === 'traffic_light') {
+            addSettingsBtn.style.display = 'inline-block';
+            mcGameContainer.style.display = 'none';
+            soGameContainer.style.display = 'none';
+            addGameContainer.style.display = 'none';
+            subGameContainer.style.display = 'none';
+            saGameContainer.style.display = 'none';
+            tlGameContainer.style.display = 'flex';
+            tlReset();
         }
         updateTitle(currentLanguage);
         updateUrlParams();
     });
+
+    /**
+     * Updates the active light classes on the traffic light DOM elements
+     * to reflect the current state.
+     */
+    function tlUpdateLights() {
+        tlRed.classList.remove('active');
+        tlYellow.classList.remove('active');
+        tlGreen.classList.remove('active');
+
+        if (tlCurrentState === 0) {
+            tlRed.classList.add('active');
+        } else if (tlCurrentState === 1) {
+            tlRed.classList.add('active');
+            tlYellow.classList.add('active');
+        } else if (tlCurrentState === 2) {
+            tlGreen.classList.add('active');
+        } else if (tlCurrentState === 3) {
+            tlYellow.classList.add('active');
+        }
+    }
+
+    /**
+     * Updates the countdown text display based on the current state,
+     * remaining seconds, and language.
+     */
+    function tlUpdateDisplay() {
+        if (tlCurrentState === 1 || tlCurrentState === 3) {
+            tlCountdownDisplay.textContent = currentLanguage === 'zh' ? '準備中...' : 'Ready...';
+            return;
+        }
+
+        if (tlIsAuto) {
+            if (tlCurrentState === 0) {
+                tlCountdownDisplay.textContent = currentLanguage === 'zh' 
+                    ? `等待 ${tlRemainingSeconds} 秒` 
+                    : `Wait ${tlRemainingSeconds}s`;
+            } else if (tlCurrentState === 2) {
+                tlCountdownDisplay.textContent = currentLanguage === 'zh' 
+                    ? `通行 ${tlRemainingSeconds} 秒` 
+                    : `Walk ${tlRemainingSeconds}s`;
+            }
+        } else {
+            tlCountdownDisplay.textContent = currentLanguage === 'zh' 
+                ? '點擊切換' 
+                : 'Click to switch';
+        }
+    }
+
+    /**
+     * Stops any running timers and transitions.
+     */
+    function tlCleanup() {
+        if (tlTimer) {
+            clearInterval(tlTimer);
+            tlTimer = null;
+        }
+        if (tlTransitionTimeout) {
+            clearTimeout(tlTransitionTimeout);
+            tlTransitionTimeout = null;
+        }
+    }
+
+    /**
+     * Resets the traffic light state machine to State 0 (Red)
+     * and sets up/starts timers based on settings.
+     */
+    function tlReset() {
+        tlCleanup();
+        tlCurrentState = 0;
+        tlRemainingSeconds = tlDuration;
+        tlUpdateLights();
+        tlUpdateDisplay();
+
+        if (tlIsAuto) {
+            tlStartCountdown();
+        }
+    }
+
+    /**
+     * Starts the countdown timer for the Auto mode.
+     */
+    function tlStartCountdown() {
+        if (tlTimer) clearInterval(tlTimer);
+        tlRemainingSeconds = tlDuration;
+        tlUpdateDisplay();
+
+        tlTimer = setInterval(() => {
+            tlRemainingSeconds--;
+            if (tlRemainingSeconds <= 0) {
+                clearInterval(tlTimer);
+                tlTimer = null;
+                tlTransitionToNext();
+            } else {
+                tlUpdateDisplay();
+            }
+        }, 1000);
+    }
+
+    /**
+     * Handles transition from a waiting state (Red/Green) to the next state.
+     */
+    function tlTransitionToNext() {
+        tlCleanup();
+        if (tlCurrentState === 0) {
+            // Red -> Red+Yellow (2 seconds transition)
+            tlCurrentState = 1;
+            tlUpdateLights();
+            tlUpdateDisplay();
+            tlTransitionTimeout = setTimeout(() => {
+                tlCurrentState = 2; // Green
+                tlUpdateLights();
+                tlUpdateDisplay();
+                if (tlIsAuto) {
+                    tlStartCountdown();
+                }
+            }, 2000);
+        } else if (tlCurrentState === 2) {
+            // Green -> Yellow (2 seconds transition)
+            tlCurrentState = 3;
+            tlUpdateLights();
+            tlUpdateDisplay();
+            tlTransitionTimeout = setTimeout(() => {
+                tlCurrentState = 0; // Red
+                tlUpdateLights();
+                tlUpdateDisplay();
+                if (tlIsAuto) {
+                    tlStartCountdown();
+                }
+            }, 2000);
+        }
+    }
+
+    /**
+     * Handles manual click event on the traffic light housing.
+     */
+    function tlHandleClick() {
+        if (tlIsAuto) return;
+        // Only allow clicking to advance during waiting states (0 or 2)
+        if (tlCurrentState === 0 || tlCurrentState === 2) {
+            tlTransitionToNext();
+        }
+    }
+
+    trafficLightHousing.addEventListener('click', tlHandleClick);
 
     // Initialization
     async function init() {
@@ -1884,7 +2226,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentCategory = categoryParam;
         }
 
-        const validModes = ['multiple_choice', 'sentence_order', 'addition', 'subtraction', 'short_answer'];
+        const validModes = ['multiple_choice', 'sentence_order', 'addition', 'subtraction', 'short_answer', 'traffic_light'];
         if (modeParam && validModes.includes(modeParam)) {
             currentGameMode = modeParam;
         }
@@ -1898,6 +2240,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isNaN(nParam) && nParam >= 1 && nParam <= 5) {
             addNDigits = nParam;
             subNDigits = nParam;
+        }
+
+        const tlAutoParam = urlParams.get('tl_auto');
+        if (tlAutoParam !== null) {
+            tlIsAuto = tlAutoParam === '1';
+        }
+        const tlDurationParam = parseInt(urlParams.get('tl_duration'));
+        if (!isNaN(tlDurationParam) && tlDurationParam >= 1) {
+            tlDuration = tlDurationParam;
         }
 
         categorySwitch.value = currentCategory;
@@ -1932,6 +2283,8 @@ document.addEventListener('DOMContentLoaded', () => {
             addGameContainer.style.display = 'none';
             subGameContainer.style.display = 'none';
             saGameContainer.style.display = 'none';
+            tlGameContainer.style.display = 'none';
+            tlCleanup();
             await loadMcQuestions(currentLanguage, currentCategory);
             renderMcQuestion();
         } else if (currentGameMode === 'sentence_order') {
@@ -1940,6 +2293,8 @@ document.addEventListener('DOMContentLoaded', () => {
             addGameContainer.style.display = 'none';
             subGameContainer.style.display = 'none';
             saGameContainer.style.display = 'none';
+            tlGameContainer.style.display = 'none';
+            tlCleanup();
             soLoadSentence();
         } else if (currentGameMode === 'addition') {
             addSettingsBtn.style.display = 'inline-block';
@@ -1948,6 +2303,8 @@ document.addEventListener('DOMContentLoaded', () => {
             addGameContainer.style.display = 'block';
             subGameContainer.style.display = 'none';
             saGameContainer.style.display = 'none';
+            tlGameContainer.style.display = 'none';
+            tlCleanup();
             addLoadQuestion();
         } else if (currentGameMode === 'subtraction') {
             addSettingsBtn.style.display = 'inline-block';
@@ -1956,6 +2313,8 @@ document.addEventListener('DOMContentLoaded', () => {
             addGameContainer.style.display = 'none';
             subGameContainer.style.display = 'block';
             saGameContainer.style.display = 'none';
+            tlGameContainer.style.display = 'none';
+            tlCleanup();
             subLoadQuestion();
         } else if (currentGameMode === 'short_answer') {
             mcGameContainer.style.display = 'none';
@@ -1963,7 +2322,18 @@ document.addEventListener('DOMContentLoaded', () => {
             addGameContainer.style.display = 'none';
             subGameContainer.style.display = 'none';
             saGameContainer.style.display = 'block';
+            tlGameContainer.style.display = 'none';
+            tlCleanup();
             saLoadQuestion();
+        } else if (currentGameMode === 'traffic_light') {
+            addSettingsBtn.style.display = 'inline-block';
+            mcGameContainer.style.display = 'none';
+            soGameContainer.style.display = 'none';
+            addGameContainer.style.display = 'none';
+            subGameContainer.style.display = 'none';
+            saGameContainer.style.display = 'none';
+            tlGameContainer.style.display = 'flex';
+            tlReset();
         }
         
         updateUrlParams();
